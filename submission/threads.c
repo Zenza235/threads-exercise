@@ -12,7 +12,9 @@
 
 static int sum = 0;
 static int max = 0;
+/*
 static pthread_mutex_t mutex;
+*/
 
 void verify_args(
 	int *num_elements, int *num_threads, int *seed, int *task, char *print_results,
@@ -61,7 +63,9 @@ int main(int argc, char *argv[]) {
 		printf("Task: get_sum()\n");
 	}
 
+	/*
 	pthread_mutex_init(&mutex, NULL);
+	*/
 	array = malloc(sizeof(int) * num_elements);
 	init_array(seed, num_elements, &array);
 	/* make array of segs */
@@ -104,7 +108,9 @@ int main(int argc, char *argv[]) {
 	printf("User time: %f seconds\n", delta_user.tv_sec + (delta_user.tv_usec / (double) 1000000));
 	printf("System/kernel time: %f seconds\n", delta_system.tv_sec + (delta_system.tv_usec / (double) 1000000));
 
+	/*
 	pthread_mutex_destroy(&mutex);
+	*/
 	free(seg);
 	free(array);
 	free(tids);
@@ -118,11 +124,15 @@ void *get_max(void *arg) {
 	printf("get_max(): %d - %d, size: %d\n", start, end, seg.size);
 	*/
 	for (i = start; i <= end; i++) {
+		/*
 		pthread_mutex_lock(&mutex);
+		*/
 		if (max < seg.array[i]) {
 			max = seg.array[i];
 		}
+		/*
 		pthread_mutex_unlock(&mutex);
+		*/	
 	}
 	return NULL;
 }
@@ -134,9 +144,13 @@ void *get_sum(void *arg) {
 	printf("get_sum(): %d - %d, size: %d\n", start, end, seg.size);
 	*/
 	for (i = start; i <= end; i++) {
+		/*
 		pthread_mutex_lock(&mutex);
+		*/
 		sum += seg.array[i] % 1000000;
+		/*
 		pthread_mutex_unlock(&mutex);
+		*/
 	}
 	return NULL;
 }
