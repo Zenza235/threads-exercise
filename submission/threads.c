@@ -10,15 +10,13 @@
 /* upper limit for array */
 #define MAX_NUM 999
 
-static int sum = 0;
-static int max = 0;
-/*
+static long sum = 0;
+static long max = 0;
 static pthread_mutex_t mutex;
-*/
 
 void verify_args(
-	int *num_elements, int *num_threads, int *seed, int *task, char *print_results,
-	int ne_arg, int nt_arg, int seed_arg, int task_arg, char pr_arg
+	long *num_elements, int *num_threads, int *seed, int *task, char *print_results,
+	long ne_arg, int nt_arg, int seed_arg, int task_arg, char pr_arg
 );
 
 struct timeval tv_delta(struct timeval start, struct timeval end) {
@@ -33,7 +31,8 @@ struct timeval tv_delta(struct timeval start, struct timeval end) {
 }
 
 int main(int argc, char *argv[]) {
-	int num_elements, num_threads, seed, task;
+	long num_elements;
+	int num_threads, seed, task;
 	char print_results;
 	pthread_t *tids;
 	Segment *seg;
@@ -53,19 +52,17 @@ int main(int argc, char *argv[]) {
 	}
 	verify_args(
 		&num_elements, &num_threads, &seed, &task, &print_results,
-		atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), argv[5][0]
+		strtol(argv[1], NULL, 10), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), argv[5][0]
 	);
 
-	printf("Number of Elements: %d\nNumber of Threads: %d\nSeed: %d\n", num_elements, num_threads, seed);
+	printf("Number of Elements: %lu\nNumber of Threads: %d\nSeed: %d\n", num_elements, num_threads, seed);
 	if (task == 1) {
 		printf("Task: get_max()\n");
 	} else {
 		printf("Task: get_sum()\n");
 	}
 
-	/*
 	pthread_mutex_init(&mutex, NULL);
-	*/
 	array = malloc(sizeof(int) * num_elements);
 	init_array(seed, num_elements, &array);
 	/* make array of segs */
@@ -95,9 +92,9 @@ int main(int argc, char *argv[]) {
 
 	if (print_results == 'Y' || print_results == 'y') {
 		if (task == 1) {
-			printf("Result of get_max(): %d\n", max);
+			printf("Result of get_max(): %lu\n", max);
 		} else {
-			printf("Result of get_sum(): %d\n", sum);
+			printf("Result of get_sum(): %lu\n", sum);
 		}
 	}
 
@@ -120,6 +117,7 @@ int main(int argc, char *argv[]) {
 void *get_max(void *arg) {
 	Segment seg = *(Segment *) arg;
 	int i, start = seg.start, end = seg.start + seg.size - 1;
+	int thread_max = 0;
 	/*
 	printf("get_max(): %d - %d, size: %d\n", start, end, seg.size);
 	*/
@@ -127,19 +125,25 @@ void *get_max(void *arg) {
 		/*
 		pthread_mutex_lock(&mutex);
 		*/
-		if (max < seg.array[i]) {
-			max = seg.array[i];
+		if (thread_max < seg.array[i]) {
+			thread_max = seg.array[i];
 		}
 		/*
 		pthread_mutex_unlock(&mutex);
 		*/	
 	}
+	pthread_mutex_lock(&mutex);
+	if (max < thread_max) {
+		max = thread_max;
+	}
+	pthread_mutex_unlock(&mutex);
 	return NULL;
 }
 
 void *get_sum(void *arg) {
 	Segment seg = *(Segment *) arg;
 	int i, start = seg.start, end = seg.start + seg.size - 1;
+	int thread_sum = 0;
 	/*
 	printf("get_sum(): %d - %d, size: %d\n", start, end, seg.size);
 	*/
@@ -147,11 +151,18 @@ void *get_sum(void *arg) {
 		/*
 		pthread_mutex_lock(&mutex);
 		*/
-		sum += seg.array[i] % 1000000;
+		thread_sum += seg.array[i] % 1000000;
 		/*
 		pthread_mutex_unlock(&mutex);
 		*/
 	}
+	/*
+	pthread_mutex_lock(&mutex);
+	*/
+	sum += thread_sum;
+	/*
+	pthread_mutex_unlock(&mutex);
+	*/
 	return NULL;
 }
 
@@ -176,7 +187,7 @@ int get_max_expected(int size, int arr[]) {
 }
 
 pthread_t *create_threads(
-	int num_elements, int num_threads, int task, Segment seg[]
+	long num_elements, int num_threads, int task, Segment seg[]
 ) {
 	int i;
 	pthread_t *tids;
@@ -222,15 +233,15 @@ void print_array(int size, int array[]) {
 }
 
 void verify_args(
-	int *num_elements, int *num_threads, int *seed, int *task, char *print_results,
-	int ne_arg, int nt_arg, int seed_arg, int task_arg, char pr_arg
+	long *num_elements, int *num_threads, int *seed, int *task, char *print_results,
+	long ne_arg, int nt_arg, int seed_arg, int task_arg, char pr_arg
 ) {
 	if ((*num_elements = ne_arg) <= 0) {
 		fprintf(stderr, "num_elements: Invalid number. Must be above 0.\n");
 		exit(EX_USAGE);
 	}
 	if ((*num_threads = nt_arg) > *num_elements || *num_threads < 0) {
-		fprintf(stderr, "num_threads: Invalid number. Must be between 0 and %d.\n", *num_elements);
+		fprintf(stderr, "num_threads: Invalid number. Must be between 0 and %lu.\n", *num_elements);
 		exit(EX_USAGE);
 	}
 	*seed = seed_arg;
